@@ -1,0 +1,25 @@
+name: pytorch_challenge
+channels:
+    - https://conda.anaconda.org/menpo
+    - conda-forge
+    - ioam
+    - soumith
+dependencies:
+    - python=3.5
+    - autopep8
+    - ipdb
+    - jupyter
+    - matplotlib
+    - numpy
+    - pandas
+    - pytorch
+    - ruamel.yaml
+    - scikit-learn
+    - scipy
+    - seaborn
+    - tqdm
+    - pip:
+        - torchvision
+        - tensorboardX
+        - torchsummary
+        - optuna
