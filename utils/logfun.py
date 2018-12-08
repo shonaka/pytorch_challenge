@@ -23,7 +23,7 @@ def set_logger(save_output, log_file_name):
         logger.addHandler(handler)
 
         # for file, up to DEBUG level
-        handler = FileHandler(save_output + '/' + log_file_name, 'a')
+        handler = FileHandler(save_output + '/' + log_file_name, 'w')
         handler.setLevel(DEBUG)
         handler.setFormatter(log_format)
         logger.setLevel(DEBUG)

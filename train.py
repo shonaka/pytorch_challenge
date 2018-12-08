@@ -49,7 +49,6 @@ def create_dataloader(normalization, directories, batch_size):
     # Defining transformations
     data_transforms = {
         'train': transforms.Compose([transforms.Resize(256),
-                                     transforms.RandomRotation(30),
                                      transforms.RandomResizedCrop(224),
                                      transforms.RandomHorizontalFlip(),
                                      transforms.ToTensor(),
@@ -114,6 +113,65 @@ class SimpleCNN(nn.Module):
         x = self.fc2(x)
         return x
 
+def train_and_eval(model, dataloaders, torch_gpu, log, num_epochs):
+    # Define optimizers and loss function
+    optimizer = torch.optim.Adam(model.parameters(), amsgrad=True)
+    criterion = nn.CrossEntropyLoss()
+    # for tracking loss and acc
+    train_loss = []
+    train_acc = []
+    # Make sure it's in training mode
+    model.train()
+    # Iterate over number of epochs
+    for e in range(num_epochs):
+        # training
+        for i, (data, target) in enumerate(dataloaders['train']):
+            # If using gpu, make sure you put the data into cuda
+            if torch_gpu:
+                data, target = data.cuda(), target.cuda()
+            # Clear previous gradients
+            optimizer.zero_grad()
+            # Make prediction
+            out = model(data)
+            # Compute gradients of all variables wrt loss
+            loss = criterion(out, target)
+            loss.backward()
+            # Update
+            optimizer.step()
+            # Track the loss for visualization
+            train_loss.append(loss.item())
+            # Calculate accuracy by finding max probability
+            _, pred = torch.max(out, dim = 1)
+            correct_tensor = pred.eq(target.data.view_as(pred))
+            accuracy = torch.mean(correct_tensor.type(torch.FloatTensor))
+            temp_acc = accuracy.item() / len(dataloaders['train']) * 100
+            train_acc.append(temp_acc)
+            # Log training
+            if i % 20 == 0:
+                log.info("Epoch: {}, Loss: {:.2f}, Acc: {:.2f}".format(e+1, loss.item(), temp_acc))
+
+    # validating
+    # making sure it's not in training mode anymore
+    model.eval()
+    # No need to track gradients as well
+    with torch.no_grad():
+        # validation for loop
+        for i, (data, target) in enumerate(dataloaders['valid']):
+            # If using gpu, make sure you put the data into cuda
+            if torch_gpu:
+                data, target = data.cuda(), target.cuda()
+            # prediction
+            out = model(data)
+            # calculate the loss
+            loss = criterion(out, target)
+            # calculate the accuracy
+            _, pred = torch.max(out, dim = 1)
+            correct_tensor = pred.eq(target.data.view_as(pred))
+            accuracy = torch.mean(correct_tensor.type(torch.FloatTensor))
+            valid_acc = accuracy.item() / len(dataloaders['valid']) * 100
+
+            log.info("Validation loss: {:.2f}, Acc: {:.2f}".format(loss.item(), valid_acc))
+
 
 if __name__ == '__main__':
 
@@ -159,6 +217,7 @@ if __name__ == '__main__':
     log.info("Normalization used for mean: {}".format(str(normalization['mean'])))
     log.info("Normalization used for std: {}".format(str(normalization['std'])))
     log.info("Batch size: {}".format(batch_size))
+    log.info("Using GPU: {}".format(str(torch_gpu)))
     log.info("Number of training samples: {}".format(len(dataloaders['train'].dataset.samples)))
     log.info("Number of classes: {}".format(num_classes))
     log.info("Dimensions of an image: {}".format(str(next(iter(dataloaders['train']))[0].shape)))
@@ -179,39 +238,7 @@ if __name__ == '__main__':
     model = SimpleCNN(params).cuda() if torch_gpu else SimpleCNN(params).cuda()
 
     # Good for checking the architecture
-    # summary(model, input_size=(3, 224, 224), batch_size=batch_size)
+    summary(model, input_size=(3, 224, 224), batch_size=batch_size)
 
-    # Define optimizers and loss function
-    optimizer = torch.optim.Adam(model.parameters(), amsgrad=True)
-    criterion = nn.CrossEntropyLoss()
-
-    # Training (Later make this into a function)
-    train_loss = 0.0
-    valid_loss = 0.0
-    train_acc = 0.0
-    valid_acc = 0.0
-
-    model.train()
-    for i, (data, target) in enumerate(dataloaders['train']):
-        if torch_gpu:
-            data, target = data.cuda(), target.cuda()
-
-        optimizer.zero_grad()
-
-        output = model(data)
-
-        loss = criterion(output, target)
-        loss.backward()
-
-        optimizer.step()
-
-        train_loss += loss.item()
-
-        # Calculate accuracy by finding max probability
-        _, pred = torch.max(output, dim = 1)
-        correct_tensor = pred.eq(target.data.view_as(pred))
-        accuracy = torch.mean(correct_tensor.type(torch.FloatTensor))
-        train_acc += accuracy.item()
-
-        # Track training
-        print(train_acc)
+    # A function to perform training and validation
+    train_and_eval(model, dataloaders, torch_gpu, log, num_epochs=20)
