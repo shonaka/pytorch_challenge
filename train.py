@@ -83,12 +83,31 @@ class SimpleCNN(nn.Module):
         """
         super(SimpleCNN, self).__init__()
         self.params = params
-        self.conv1 = nn.Conv2d(in_channels=3, out_channels=4, kernel_size=3, padding=1)
-        self.conv2 = nn.Conv2d(4, 8, 3, padding=1)
-        self.conv3 = nn.Conv2d(8, 16, 3, padding=1)
-        self.conv4 = nn.Conv2d(16, 32, 3, padding=1)
-        self.conv5 = nn.Conv2d(32, 64, 3, padding=1)
-        self.pool = nn.MaxPool2d(2, 2)
+        # Defining your own block
+        self.layer1 = nn.Sequential(
+            nn.Conv2d(in_channels=3, out_channels=8, kernel_size=3, padding=1),
+            nn.BatchNorm2d(8),
+            nn.ReLU(),
+            nn.MaxPool2d(2)
+        )
+        self.layer2 = nn.Sequential(
+            nn.Conv2d(8, 16, 3, padding=1),
+            nn.BatchNorm2d(16),
+            nn.ReLU(),
+            nn.MaxPool2d(2)
+        )
+        self.layer3 = nn.Sequential(
+            nn.Conv2d(16, 32, 3, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.MaxPool2d(2)
+        )
+        self.layer4 = nn.Sequential(
+            nn.Conv2d(32, 64, 3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.MaxPool2d(2)
+        )
         self.fc1 = nn.Linear(64 * 7 * 7, 512)
         self.fc2 = nn.Linear(512, self.params['nc'])
         self.dropout = nn.Dropout(0.5)
@@ -99,13 +118,12 @@ class SimpleCNN(nn.Module):
         :param x: input batch data. dimension: [batch, rgb=3, height, width]
         :return x: output after forward passing
         """
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
-        x = self.pool(F.relu(self.conv3(x)))
-        x = self.pool(F.relu(self.conv4(x)))
-        x = self.pool(F.relu(self.conv5(x)))
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
         # flatten layer
-        x = x.view(-1, 64 * 7 * 7)
+        x = x.view(x.size(0), -1)
         x = self.dropout(x)
         x = F.relu(self.fc1(x))
         x = self.dropout(x)
@@ -113,17 +131,11 @@ class SimpleCNN(nn.Module):
         return x
 
 def train_and_eval(model, dataloaders, torch_gpu, log, num_epochs):
-    # Define optimizers and loss function
-    optimizer = torch.optim.Adam(model.parameters(), amsgrad=True)
-    criterion = nn.CrossEntropyLoss()
-    # for tracking loss and acc
-    train_loss = []
-    train_acc = []
-    # Make sure it's in training mode
-    model.train()
-    # Iterate over number of epochs
-    for e in range(num_epochs):
-        # training
+    # For training
+    def train(model, optimizer, criterion, dataloaders, torch_gpu):
+        # Make sure the model in training mode
+        model.train()
+        running_loss = 0
         for i, (data, target) in enumerate(dataloaders['train']):
             # If using gpu, make sure you put the data into cuda
             if torch_gpu:
@@ -138,38 +150,62 @@ def train_and_eval(model, dataloaders, torch_gpu, log, num_epochs):
             # Update
             optimizer.step()
             # Track the loss for visualization
-            train_loss.append(loss.item())
-            # Calculate accuracy by finding max probability
-            _, pred = torch.max(out, dim = 1)
-            correct_tensor = pred.eq(target.data.view_as(pred))
-            accuracy = torch.mean(correct_tensor.type(torch.FloatTensor))
-            temp_acc = accuracy.item() / len(dataloaders['train']) * 100
-            train_acc.append(temp_acc)
-            # Log training
-            if i % 20 == 0:
-                log.info("Epoch: {}, Iter: {}, Loss: {:.2f}, Acc: {:.2f}".format(e+1, i+1, loss.item(), temp_acc))
+            running_loss += loss.item()
+        # calculate the train Loss
+        train_loss = running_loss / len(dataloaders['train'])
+        return train_loss
 
-    # validating
-    # making sure it's not in training mode anymore
-    model.eval()
-    # No need to track gradients as well
-    with torch.no_grad():
-        # validation for loop
-        for i, (data, target) in enumerate(dataloaders['valid']):
-            # If using gpu, make sure you put the data into cuda
-            if torch_gpu:
-                data, target = data.cuda(), target.cuda()
-            # prediction
-            out = model(data)
-            # calculate the loss
-            loss = criterion(out, target)
-            # calculate the accuracy
-            _, pred = torch.max(out, dim = 1)
-            correct_tensor = pred.eq(target.data.view_as(pred))
-            accuracy = torch.mean(correct_tensor.type(torch.FloatTensor))
-            valid_acc = accuracy.item() / len(dataloaders['valid']) * 100
+    # For Validation
+    def valid(model, criterion, dataloaders, torch_gpu):
+        # making sure it's not in training mode anymore
+        model.eval()
+        running_loss = 0
+        correct = 0
+        total = 0
+        # No need to track gradients as well
+        with torch.no_grad():
+            # validation for loop
+            for i, (data, target) in enumerate(dataloaders['valid']):
+                # If using gpu, make sure you put the data into cuda
+                if torch_gpu:
+                    data, target = data.cuda(), target.cuda()
+                # prediction
+                out = model(data)
+                # calculate the loss
+                loss = criterion(out, target)
+                running_loss += loss.item()
+                # for accuracy
+                pred = out.max(1, keepdim=True)[1]
+                correct += pred.eq(target.view_as(pred)).sum().item()
+                total += target.size(0)
 
-            log.info("Validation loss: {:.2f}, Acc: {:.2f}".format(loss.item(), valid_acc))
+        valid_loss = running_loss / len(dataloaders['valid'])
+        valid_acc = correct / total
+        return valid_loss, valid_acc
+
+    # Define optimizers and loss function
+    optimizer = torch.optim.Adam(model.parameters(), amsgrad=True)
+    criterion = nn.CrossEntropyLoss()
+
+    # Define empty lists for keeping track of results
+    train_loss_list = []
+    valid_loss_list = []
+    valid_acc_list = []
+
+    # Iterate over number of epochs
+    for e in range(num_epochs):
+        train_loss = train(model, optimizer, criterion, dataloaders, torch_gpu)
+        valid_loss, valid_acc = valid(model, criterion, dataloaders, torch_gpu)
+        log.info("Epoch: {}, Train Loss: {:.2f}, Val Loss:{:.2f}, Val Acc:{:.2f}".format(e+1,
+                                                                                        train_loss,
+                                                                                        valid_loss,
+                                                                                        valid_acc))
+        # for later visualization
+        train_loss_list.append(train_loss)
+        valid_loss_list.append(valid_loss)
+        valid_acc_list.append(valid_acc)
+
+    return train_loss_list, valid_loss_list, valid_acc_list
 
 
 if __name__ == '__main__':
@@ -240,4 +276,4 @@ if __name__ == '__main__':
     summary(model, input_size=(3, 224, 224), batch_size=batch_size)
 
     # A function to perform training and validation
-    train_and_eval(model, dataloaders, torch_gpu, log, num_epochs=20)
+    t_loss, v_loss, v_acc = train_and_eval(model, dataloaders, torch_gpu, log, num_epochs=20)
