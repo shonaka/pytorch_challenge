@@ -83,15 +83,14 @@ class SimpleCNN(nn.Module):
         """
         super(SimpleCNN, self).__init__()
         self.params = params
-        # Input dimension: [3, 224, 224]
-        self.conv1 = nn.Conv2d(in_channels=3, out_channels=16, kernel_size=3, padding=1)
-        self.conv2 = nn.Conv2d(16, 32, 3, padding=1)
-        self.conv3 = nn.Conv2d(32, 64, 3, padding=1)
-        self.conv4 = nn.Conv2d(64, 128, 3, padding=1)
-        self.conv5 = nn.Conv2d(128, 256, 3, padding=1)
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=4, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(4, 8, 3, padding=1)
+        self.conv3 = nn.Conv2d(8, 16, 3, padding=1)
+        self.conv4 = nn.Conv2d(16, 32, 3, padding=1)
+        self.conv5 = nn.Conv2d(32, 64, 3, padding=1)
         self.pool = nn.MaxPool2d(2, 2)
-        self.fc1 = nn.Linear(256 * 7 * 7, 1024)
-        self.fc2 = nn.Linear(1024, self.params['nc'])
+        self.fc1 = nn.Linear(64 * 7 * 7, 512)
+        self.fc2 = nn.Linear(512, self.params['nc'])
         self.dropout = nn.Dropout(0.5)
 
     def forward(self, x):
@@ -106,7 +105,7 @@ class SimpleCNN(nn.Module):
         x = self.pool(F.relu(self.conv4(x)))
         x = self.pool(F.relu(self.conv5(x)))
         # flatten layer
-        x = x.view(-1, 256 * 7 * 7)
+        x = x.view(-1, 64 * 7 * 7)
         x = self.dropout(x)
         x = F.relu(self.fc1(x))
         x = self.dropout(x)
@@ -148,7 +147,7 @@ def train_and_eval(model, dataloaders, torch_gpu, log, num_epochs):
             train_acc.append(temp_acc)
             # Log training
             if i % 20 == 0:
-                log.info("Epoch: {}, Loss: {:.2f}, Acc: {:.2f}".format(e+1, loss.item(), temp_acc))
+                log.info("Epoch: {}, Iter: {}, Loss: {:.2f}, Acc: {:.2f}".format(e+1, i+1, loss.item(), temp_acc))
 
     # validating
     # making sure it's not in training mode anymore
