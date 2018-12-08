@@ -4,9 +4,12 @@ Main file for PyTorch Challenge Final Project
 from __future__ import print_function, division
 import os
 import pdb
+import json
 import zipfile
 import urllib.request
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from torchvision import transforms, datasets
@@ -44,31 +47,79 @@ def check_dir_and_create(dir_path):
 
 def create_dataloader(normalization, directories, batch_size):
     # Defining transformations
-    train_transforms = transforms.Compose([transforms.Resize(256),
-                                           transforms.RandomRotation(30),
-                                           transforms.RandomResizedCrop(224),
-                                           transforms.RandomHorizontalFlip(),
-                                           transforms.ToTensor(),
-                                           transforms.Normalize(normalization['mean'],
-                                                                normalization['std'])])
-    valid_transforms = transforms.Compose([transforms.Resize(256),
-                                           transforms.CenterCrop(224),
-                                           transforms.ToTensor(),
-                                           transforms.Normalize(normalization['mean'],
-                                                                normalization['std'])])
-    data = {
-        'train': datasets.ImageFolder(root=str(directories['train']), transform=train_transforms),
-        'valid': datasets.ImageFolder(root=str(directories['valid']), transform=valid_transforms)
+    data_transforms = {
+        'train': transforms.Compose([transforms.Resize(256),
+                                     transforms.RandomRotation(30),
+                                     transforms.RandomResizedCrop(224),
+                                     transforms.RandomHorizontalFlip(),
+                                     transforms.ToTensor(),
+                                     transforms.Normalize(normalization['mean'],
+                                                          normalization['std'])]),
+        'valid': transforms.Compose([transforms.Resize(256),
+                                     transforms.CenterCrop(224),
+                                     transforms.ToTensor(),
+                                     transforms.Normalize(normalization['mean'],
+                                                          normalization['std'])])
+    }
+    image_datasets = {
+        'train': datasets.ImageFolder(root=str(directories['train']),
+                                      transform=data_transforms['train']),
+        'valid': datasets.ImageFolder(root=str(directories['valid']),
+                                      transform=data_transforms['valid'])
     }
     # Defining dataloaders. Making sure only the training has random shuffle on
     dataloaders = {
-        'train': DataLoader(data['train'], batch_size=batch_size, shuffle=True),
-        'valid': DataLoader(data['valid'], batch_size=batch_size)
+        'train': DataLoader(image_datasets['train'], batch_size=batch_size, shuffle=True),
+        'valid': DataLoader(image_datasets['valid'], batch_size=batch_size)
     }
     return dataloaders
 
+class SimpleCNN(nn.Module):
+    """
+    A class for simple CNN classifier.
+    """
+    def __init__(self, params):
+        """
+        Define a constructor and initialize the network.
+        """
+        super(SimpleCNN, self).__init__()
+        self.params = params
+        # Input dimension: [3, 224, 224]
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=16, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(16, 32, 3, padding=1)
+        self.conv3 = nn.Conv2d(32, 64, 3, padding=1)
+        self.conv4 = nn.Conv2d(64, 128, 3, padding=1)
+        self.conv5 = nn.Conv2d(128, 256, 3, padding=1)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.fc1 = nn.Linear(256 * 7 * 7, 1024)
+        self.fc2 = nn.Linear(1024, self.params['nc'])
+        self.dropout = nn.Dropout(0.5)
+
+    def forward(self, x):
+        """
+        Actually defining the structure.
+        :param x: input batch data. dimension: [batch, rgb=3, height, width]
+        :return x: output after forward passing
+        """
+        x = self.pool(F.relu(self.conv1(x)))
+        x = self.pool(F.relu(self.conv2(x)))
+        x = self.pool(F.relu(self.conv3(x)))
+        x = self.pool(F.relu(self.conv4(x)))
+        x = self.pool(F.relu(self.conv5(x)))
+        # flatten layer
+        x = x.view(-1, 256 * 7 * 7)
+        x = self.dropout(x)
+        x = F.relu(self.fc1(x))
+        x = self.dropout(x)
+        x = self.fc2(x)
+        return x
+
 
 if __name__ == '__main__':
+
+    # Specify parameters. Later move to config.yaml
+    batch_size = 32
+
     # Specifying some paths
     DATA_DIR = Path("data")
     RESULTS_DIR = Path("results")
@@ -99,14 +150,68 @@ if __name__ == '__main__':
         'mean': [0.5, 0.5, 0.5],
         'std':  [0.5, 0.5, 0.5]
     }
-    dataloaders = create_dataloader(normalization, directories, batch_size=32)
+    dataloaders = create_dataloader(normalization, directories, batch_size=batch_size)
+
+    # Get some other parameters
+    num_classes = len(dataloaders['train'].dataset.classes)
 
     # Logging some information
     log.info("Normalization used for mean: {}".format(str(normalization['mean'])))
     log.info("Normalization used for std: {}".format(str(normalization['std'])))
     log.info("Batch size: {}".format(batch_size))
     log.info("Number of training samples: {}".format(len(dataloaders['train'].dataset.samples)))
-    log.info("Number of classes: {}".format(len(dataloaders['train'].dataset.classes)))
+    log.info("Number of classes: {}".format(num_classes))
     log.info("Dimensions of an image: {}".format(str(next(iter(dataloaders['train']))[0].shape)))
 
-    pdb.set_trace()
+    # Loading labels provided by Udacity
+    # https://github.com/udacity/pytorch_challenge
+    with open('cat_to_name.json', 'r') as f:
+        cat_to_name = json.load(f)
+
+    log.info("Categories: {}".format(str(cat_to_name)))
+
+    # Building a model
+    params = {
+        'nc': num_classes
+    }
+
+    # Define your model
+    model = SimpleCNN(params).cuda() if torch_gpu else SimpleCNN(params).cuda()
+
+    # Good for checking the architecture
+    # summary(model, input_size=(3, 224, 224), batch_size=batch_size)
+
+    # Define optimizers and loss function
+    optimizer = torch.optim.Adam(model.parameters(), amsgrad=True)
+    criterion = nn.CrossEntropyLoss()
+
+    # Training (Later make this into a function)
+    train_loss = 0.0
+    valid_loss = 0.0
+    train_acc = 0.0
+    valid_acc = 0.0
+
+    model.train()
+    for i, (data, target) in enumerate(dataloaders['train']):
+        if torch_gpu:
+            data, target = data.cuda(), target.cuda()
+
+        optimizer.zero_grad()
+
+        output = model(data)
+
+        loss = criterion(output, target)
+        loss.backward()
+
+        optimizer.step()
+
+        train_loss += loss.item()
+
+        # Calculate accuracy by finding max probability
+        _, pred = torch.max(output, dim = 1)
+        correct_tensor = pred.eq(target.data.view_as(pred))
+        accuracy = torch.mean(correct_tensor.type(torch.FloatTensor))
+        train_acc += accuracy.item()
+
+        # Track training
+        print(train_acc)
