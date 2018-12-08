@@ -6,8 +6,11 @@ This is a repository for PyTorch Challenge Final Project from Udacity.
 Although the above link has a nice jupyter notebook where you could just fill in the gaps, I decided to implement the code from scratch to solve the problem for my practice.
 
 ## Data
-You could easily download the data from below, but I wrote the data_loader script that automatically takes care of downloading and unzipping for you.
+You could easily download the data from below and unzip to put into the "data" folder.
 - https://s3.amazonaws.com/content.udacity-data.com/courses/nd188/flower_data.zip
+
+or alternatively, just run the following command
+
 
 ## Requirements
 Make sure you have Anaconda installed (or miniconda) and once you clone or download this repository, do the following.
@@ -27,11 +30,6 @@ source activate pytorch_challenge
   ├── requirements.yml - requirements listed for easy construction of conda environment
   ├── cat_to_name.json - json file containing reference for the flower names
   │
-  ├── base/ - abstract base classes
-  │   ├── base_data_loader.py - abstract base class for data loaders
-  │   ├── base_model.py - abstract base class for models
-  │   └── base_trainer.py - abstract base class for trainers
-  │
   ├── data_loader/ - anything about data loading goes here
   │   └── data_loaders.py
   │
@@ -42,14 +40,10 @@ source activate pytorch_challenge
   │   ├── metric.py
   │   └── model.py
   │
-  ├── saved/ - default checkpoints folder
-  │   └── runs/ - default logdir for tensorboardX
-  │
-  ├── trainer/ - trainers
-  │   └── trainer.py
+  ├── results/ - default directory for storing results such as figures, checkpoints, saved models
   │
   └── utils/
-      ├── util.py
+      ├── utils.py
       ├── logger.py - class for train logging
       ├── visualization.py - class for tensorboardX visualization support
       └── ...
@@ -61,8 +55,11 @@ source activate pytorch_challenge
 - [ ] Write train.py
 - [ ] Optimize the hyperparameters with optuna
 
+## Feedbacks
+Any feedback would be greatly appreciated. Please feel free to file a github issue if you have one.
+
 ## License
 This project is licensed under the MIT License. See  LICENSE for more details
 
 ## Acknowledgments
-This project is using the directory structure called [PyTorch Template Project](https://github.com/victoresque/pytorch-template) by [Victor Huang](https://github.com/victoresque)
+This project modified the base directory structure from [PyTorch Template Project](https://github.com/victoresque/pytorch-template) by [Victor Huang](https://github.com/victoresque)
