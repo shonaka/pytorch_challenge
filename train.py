@@ -5,6 +5,7 @@ from __future__ import print_function, division
 import os
 import pdb
 import json
+import time
 import zipfile
 import urllib.request
 import torch
@@ -52,13 +53,11 @@ def create_dataloader(normalization, directories, batch_size):
                                      transforms.RandomResizedCrop(224),
                                      transforms.RandomHorizontalFlip(),
                                      transforms.ToTensor(),
-                                     transforms.Normalize(normalization['mean'],
-                                                          normalization['std'])]),
+                                     normalization,
         'valid': transforms.Compose([transforms.Resize(256),
                                      transforms.CenterCrop(224),
                                      transforms.ToTensor(),
-                                     transforms.Normalize(normalization['mean'],
-                                                          normalization['std'])])
+                                     normalization
     }
     image_datasets = {
         'train': datasets.ImageFolder(root=str(directories['train']),
@@ -135,7 +134,8 @@ def train_and_eval(model, dataloaders, torch_gpu, log, num_epochs):
     def train(model, optimizer, criterion, dataloaders, torch_gpu):
         # Make sure the model in training mode
         model.train()
-        running_loss = 0
+        running_loss = 0.0
+        running_corrects = 0
         for i, (data, target) in enumerate(dataloaders['train']):
             # If using gpu, make sure you put the data into cuda
             if torch_gpu:
@@ -144,25 +144,28 @@ def train_and_eval(model, dataloaders, torch_gpu, log, num_epochs):
             optimizer.zero_grad()
             # Make prediction
             out = model(data)
+            _, preds = torch.max(out.data, 1)
             # Compute gradients of all variables wrt loss
             loss = criterion(out, target)
             loss.backward()
             # Update
             optimizer.step()
-            # Track the loss for visualization
-            running_loss += loss.item()
-        # calculate the train Loss
+            # Track the acc and loss for visualization
+            running_loss += loss.data[0] * data.size(0)
+            running_corrects += torch.sum(preds == target.data)
+
+        # calculate the loss and acc per epoch
         train_loss = running_loss / len(dataloaders['train'])
-        return train_loss
+        train_acc = running_corrects / len(dataloaders['train'])
+        return train_loss, train_acc
 
     # For Validation
     def valid(model, criterion, dataloaders, torch_gpu):
         # making sure it's not in training mode anymore
         model.eval()
-        running_loss = 0
-        correct = 0
-        total = 0
-        # No need to track gradients as well
+        running_loss = 0.0
+        running_corrects = 0
+        # No need to track gradients when evaluating
         with torch.no_grad():
             # validation for loop
             for i, (data, target) in enumerate(dataloaders['valid']):
@@ -171,16 +174,16 @@ def train_and_eval(model, dataloaders, torch_gpu, log, num_epochs):
                     data, target = data.cuda(), target.cuda()
                 # prediction
                 out = model(data)
+                _, preds = torch.max(out.data, 1)
                 # calculate the loss
                 loss = criterion(out, target)
-                running_loss += loss.item()
-                # for accuracy
-                pred = out.max(1, keepdim=True)[1]
-                correct += pred.eq(target.view_as(pred)).sum().item()
-                total += target.size(0)
+                # keeping track of acc and loss
+                running_loss += loss.data[0] * data.size(0)
+                running_corrects += torch.sum(preds == target.data)
 
+        # calculate the loss and acc per epoch
         valid_loss = running_loss / len(dataloaders['valid'])
-        valid_acc = correct / total
+        valid_acc = running_corrects / len(dataloaders['valid'])
         return valid_loss, valid_acc
 
     # Define optimizers and loss function
@@ -189,23 +192,25 @@ def train_and_eval(model, dataloaders, torch_gpu, log, num_epochs):
 
     # Define empty lists for keeping track of results
     train_loss_list = []
+    train_acc_list = []
     valid_loss_list = []
     valid_acc_list = []
 
     # Iterate over number of epochs
     for e in range(num_epochs):
-        train_loss = train(model, optimizer, criterion, dataloaders, torch_gpu)
+        train_loss, train_acc = train(model, optimizer, criterion, dataloaders, torch_gpu)
         valid_loss, valid_acc = valid(model, criterion, dataloaders, torch_gpu)
-        log.info("Epoch: {}, Train Loss: {:.2f}, Val Loss:{:.2f}, Val Acc:{:.2f}".format(e+1,
-                                                                                        train_loss,
-                                                                                        valid_loss,
-                                                                                        valid_acc))
+        # Logging
+        log.info("Epoch: {}".format(e+1))
+        log.info("\tTrain Loss: {:.2f}, Train Acc: {:.2f}".format(train_loss, train_acc))
+        log.info("\tValid Loss:{:.2f}, Valid Acc:{:.2f}".format(valid_loss, valid_acc))
         # for later visualization
         train_loss_list.append(train_loss)
+        train_acc_list.append(train_acc)
         valid_loss_list.append(valid_loss)
         valid_acc_list.append(valid_acc)
 
-    return train_loss_list, valid_loss_list, valid_acc_list
+    return train_loss_list, train_acc_list, valid_loss_list, valid_acc_list
 
 
 if __name__ == '__main__':
@@ -239,10 +244,10 @@ if __name__ == '__main__':
         'train': DATA_DIR / DATA_NAME / "train",
         'valid': DATA_DIR / DATA_NAME / "valid"
     }
-    normalization = {
-        'mean': [0.5, 0.5, 0.5],
-        'std':  [0.5, 0.5, 0.5]
-    }
+    normalization = transforms.Normalize(
+        mean=[0.5, 0.5, 0.5],
+        std=[0.5, 0.5, 0.5]
+    )
     dataloaders = create_dataloader(normalization, directories, batch_size=batch_size)
 
     # Get some other parameters
@@ -276,4 +281,10 @@ if __name__ == '__main__':
     summary(model, input_size=(3, 224, 224), batch_size=batch_size)
 
     # A function to perform training and validation
-    t_loss, v_loss, v_acc = train_and_eval(model, dataloaders, torch_gpu, log, num_epochs=20)
+    log.info("Start Training")
+    start = time.time()
+    t_loss, t_acc, v_loss, v_acc = train_and_eval(model, dataloaders, torch_gpu, log, num_epochs=20)
+    end = time.time()
+    log.info("Finsihed Training")
+    hours, mins, seconds = timer(start, end)
+    log.info("Training and testing took: {:0>2} Hours {:0>2} minutes {:05.2f} seconds".format(int(hours), int(mins), seconds))
