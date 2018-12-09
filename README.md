@@ -51,8 +51,8 @@ source activate pytorch_challenge
 
 ## TODOs
 - [x] Write requirements.yml for easy replication
-- [ ] Write data_loader with a3 link to download the data into the folder
-- [ ] Write train.py
+- [x] Write data_loader with a3 link to download the data into the folder
+- [x] Write train.py
 - [ ] Optimize the hyperparameters with optuna
 
 ## Feedbacks
