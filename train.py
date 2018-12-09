@@ -17,6 +17,7 @@ from torchvision import transforms, datasets
 from torchsummary import summary
 from utils.logfun import set_logger, timer
 from pathlib import Path
+from tqdm import tqdm
 
 def download_data(data_dir, data_name, zip_name, url):
     # Function to unzip
@@ -53,11 +54,11 @@ def create_dataloader(normalization, directories, batch_size):
                                      transforms.RandomResizedCrop(224),
                                      transforms.RandomHorizontalFlip(),
                                      transforms.ToTensor(),
-                                     normalization,
+                                     normalization]),
         'valid': transforms.Compose([transforms.Resize(256),
                                      transforms.CenterCrop(224),
                                      transforms.ToTensor(),
-                                     normalization
+                                     normalization])
     }
     image_datasets = {
         'train': datasets.ImageFolder(root=str(directories['train']),
@@ -65,12 +66,13 @@ def create_dataloader(normalization, directories, batch_size):
         'valid': datasets.ImageFolder(root=str(directories['valid']),
                                       transform=data_transforms['valid'])
     }
+    dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'valid']}
     # Defining dataloaders. Making sure only the training has random shuffle on
     dataloaders = {
         'train': DataLoader(image_datasets['train'], batch_size=batch_size, shuffle=True),
         'valid': DataLoader(image_datasets['valid'], batch_size=batch_size)
     }
-    return dataloaders
+    return dataset_sizes, dataloaders
 
 class SimpleCNN(nn.Module):
     """
@@ -107,8 +109,14 @@ class SimpleCNN(nn.Module):
             nn.ReLU(),
             nn.MaxPool2d(2)
         )
-        self.fc1 = nn.Linear(64 * 7 * 7, 512)
-        self.fc2 = nn.Linear(512, self.params['nc'])
+        self.layer5 = nn.Sequential(
+            nn.Conv2d(64, 128, 3, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            nn.MaxPool2d(2)
+        )
+        self.fc1 = nn.Linear(128 * 7 * 7, 1024)
+        self.fc2 = nn.Linear(1024, self.params['nc'])
         self.dropout = nn.Dropout(0.5)
 
     def forward(self, x):
@@ -121,6 +129,7 @@ class SimpleCNN(nn.Module):
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
+        x = self.layer5(x)
         # flatten layer
         x = x.view(x.size(0), -1)
         x = self.dropout(x)
@@ -129,14 +138,14 @@ class SimpleCNN(nn.Module):
         x = self.fc2(x)
         return x
 
-def train_and_eval(model, dataloaders, torch_gpu, log, num_epochs):
+def train_and_eval(model, datasizes, dataloaders, torch_gpu, log, num_epochs):
     # For training
-    def train(model, optimizer, criterion, dataloaders, torch_gpu):
+    def train(model, optimizer, criterion, datasizes, dataloaders, torch_gpu):
         # Make sure the model in training mode
         model.train()
         running_loss = 0.0
         running_corrects = 0
-        for i, (data, target) in enumerate(dataloaders['train']):
+        for i, (data, target) in tqdm(enumerate(dataloaders['train'])):
             # If using gpu, make sure you put the data into cuda
             if torch_gpu:
                 data, target = data.cuda(), target.cuda()
@@ -151,16 +160,16 @@ def train_and_eval(model, dataloaders, torch_gpu, log, num_epochs):
             # Update
             optimizer.step()
             # Track the acc and loss for visualization
-            running_loss += loss.data[0] * data.size(0)
+            running_loss += loss.item() * data.size(0)
             running_corrects += torch.sum(preds == target.data)
 
         # calculate the loss and acc per epoch
-        train_loss = running_loss / len(dataloaders['train'])
-        train_acc = running_corrects / len(dataloaders['train'])
+        train_loss = running_loss / datasizes['train']
+        train_acc = running_corrects.double() / datasizes['train']
         return train_loss, train_acc
 
     # For Validation
-    def valid(model, criterion, dataloaders, torch_gpu):
+    def valid(model, criterion, datasizes, dataloaders, torch_gpu):
         # making sure it's not in training mode anymore
         model.eval()
         running_loss = 0.0
@@ -168,7 +177,7 @@ def train_and_eval(model, dataloaders, torch_gpu, log, num_epochs):
         # No need to track gradients when evaluating
         with torch.no_grad():
             # validation for loop
-            for i, (data, target) in enumerate(dataloaders['valid']):
+            for i, (data, target) in tqdm(enumerate(dataloaders['valid'])):
                 # If using gpu, make sure you put the data into cuda
                 if torch_gpu:
                     data, target = data.cuda(), target.cuda()
@@ -178,12 +187,12 @@ def train_and_eval(model, dataloaders, torch_gpu, log, num_epochs):
                 # calculate the loss
                 loss = criterion(out, target)
                 # keeping track of acc and loss
-                running_loss += loss.data[0] * data.size(0)
+                running_loss += loss.item() * data.size(0)
                 running_corrects += torch.sum(preds == target.data)
 
         # calculate the loss and acc per epoch
-        valid_loss = running_loss / len(dataloaders['valid'])
-        valid_acc = running_corrects / len(dataloaders['valid'])
+        valid_loss = running_loss / datasizes['valid']
+        valid_acc = running_corrects.double() / datasizes['valid']
         return valid_loss, valid_acc
 
     # Define optimizers and loss function
@@ -198,12 +207,12 @@ def train_and_eval(model, dataloaders, torch_gpu, log, num_epochs):
 
     # Iterate over number of epochs
     for e in range(num_epochs):
-        train_loss, train_acc = train(model, optimizer, criterion, dataloaders, torch_gpu)
-        valid_loss, valid_acc = valid(model, criterion, dataloaders, torch_gpu)
+        train_loss, train_acc = train(model, optimizer, criterion, datasizes, dataloaders, torch_gpu)
+        valid_loss, valid_acc = valid(model, criterion, datasizes, dataloaders, torch_gpu)
         # Logging
         log.info("Epoch: {}".format(e+1))
-        log.info("\tTrain Loss: {:.2f}, Train Acc: {:.2f}".format(train_loss, train_acc))
-        log.info("\tValid Loss:{:.2f}, Valid Acc:{:.2f}".format(valid_loss, valid_acc))
+        log.info("  Train Loss: {:.2f}, Train Acc: {:.2f}".format(train_loss, train_acc))
+        log.info("  Valid Loss: {:.2f}, Valid Acc: {:.2f}".format(valid_loss, valid_acc))
         # for later visualization
         train_loss_list.append(train_loss)
         train_acc_list.append(train_acc)
@@ -248,19 +257,17 @@ if __name__ == '__main__':
         mean=[0.5, 0.5, 0.5],
         std=[0.5, 0.5, 0.5]
     )
-    dataloaders = create_dataloader(normalization, directories, batch_size=batch_size)
+    d_size, d_loaders = create_dataloader(normalization, directories, batch_size=batch_size)
 
     # Get some other parameters
-    num_classes = len(dataloaders['train'].dataset.classes)
+    num_classes = len(d_loaders['train'].dataset.classes)
 
     # Logging some information
-    log.info("Normalization used for mean: {}".format(str(normalization['mean'])))
-    log.info("Normalization used for std: {}".format(str(normalization['std'])))
     log.info("Batch size: {}".format(batch_size))
     log.info("Using GPU: {}".format(str(torch_gpu)))
-    log.info("Number of training samples: {}".format(len(dataloaders['train'].dataset.samples)))
+    log.info("Number of training samples: {}".format(len(d_loaders['train'].dataset.samples)))
     log.info("Number of classes: {}".format(num_classes))
-    log.info("Dimensions of an image: {}".format(str(next(iter(dataloaders['train']))[0].shape)))
+    log.info("Dimensions of an image: {}".format(str(next(iter(d_loaders['train']))[0].shape)))
 
     # Loading labels provided by Udacity
     # https://github.com/udacity/pytorch_challenge
@@ -283,7 +290,7 @@ if __name__ == '__main__':
     # A function to perform training and validation
     log.info("Start Training")
     start = time.time()
-    t_loss, t_acc, v_loss, v_acc = train_and_eval(model, dataloaders, torch_gpu, log, num_epochs=20)
+    t_loss, t_acc, v_loss, v_acc = train_and_eval(model, d_size, d_loaders, torch_gpu, log, num_epochs=20)
     end = time.time()
     log.info("Finsihed Training")
     hours, mins, seconds = timer(start, end)
