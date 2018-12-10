@@ -69,16 +69,27 @@ class SimpleCNN(nn.Module):
 
 def Pretrained(params):
     # Load the pretrained model from torchvision
-    resnet18 = models.resnet18(pretrained=True)
+    if params['model_type'] == 'resnet18':
+        model = models.resnet18(pretrained=True)
+    elif params['model_type'] == 'resnet34':
+        model = models.resnet34(pretrained=True)
+    elif params['model_type'] == 'resnet50':
+        model = models.resnet50(pretrained=True)
+    elif params['model_type'] == 'resnet101':
+        model = models.resnet101(pretrained=True)
+    elif params['model_type'] == 'resnet152':
+        model = models.resnet152(pretrained=True)
+    else:
+        raise "There is no model you specified."
     # Freeze the parameters in the conv layers
-    for param in resnet18.parameters():
+    for param in model.parameters():
         param.requires_grad = False
     # Replace the last fully-connected layer to our needs
     # extract the number of input features to the last fc layer
-    num_features = resnet18.fc.in_features
+    num_features = model.fc.in_features
     # construct a new fc layer with our number of output classes
-    resnet18.fc = nn.Linear(num_features, params['nc'])
+    model.fc = nn.Linear(num_features, params['nc'])
 
-    return resnet18
+    return model
 
 

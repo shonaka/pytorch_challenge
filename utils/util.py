@@ -30,3 +30,5 @@ def check_dir_and_create(dir_path):
         print("The directory is missing, creating one")
         os.mkdir(dir_path)
 
+
+

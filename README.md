@@ -54,8 +54,12 @@ source activate pytorch_challenge
 - [x] Write requirements.yml for easy replication
 - [x] Write data_loader with a3 link to download the data into the folder
 - [x] Write train.py
-- [ ] Optimize the hyperparameters
-- [ ] Implement transfer learning using pre-trained models
+- [ ] Optimize the hyperparameters (try optuna and ray)
+- [x] Implement transfer learning using pre-trained models
+- [ ] Create a notebook for validation of the results.
+    - [ ] Load the pre-trained network of yours
+    - [ ] Visualize the example results
+    - [ ] Plot confusion matrix or something
 
 ## Feedbacks
 Any feedback would be greatly appreciated. Please feel free to file a github issue if you have one.

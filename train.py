@@ -23,16 +23,20 @@ import pdb
 if __name__ == '__main__':
     # ==== Later move this part to config.yaml or argparse
     batch_size = 32
-    num_epochs = 100
-    model_type = 'pretrained'
-    model_name = "resnet18.pth.tar" # when saving model
+    num_epochs = 25
+    model_type = 'resnet34'
+    model_name = model_type + '.pth.tar' # when saving model
 
     # Specifying some paths
     DATA_DIR = Path("data")
-    RESULTS_DIR = Path("results")
+    RESULTS_DIR = Path("results") / model_type
+    LOG_DIR = RESULTS_DIR / "logs"
+    FIG_DIR = RESULTS_DIR / "figures"
     # Just checking if the directory exists, if not creating
     check_dir_and_create(str(DATA_DIR))
     check_dir_and_create(str(RESULTS_DIR))
+    check_dir_and_create(str(LOG_DIR))
+    check_dir_and_create(str(FIG_DIR))
 
     # Data URL
     URL = "https://s3.amazonaws.com/content.udacity-data.com/courses/nd188/flower_data.zip"
@@ -40,7 +44,7 @@ if __name__ == '__main__':
     ZIP_NAME = "flower_data.zip"
 
     # Custom function for logging
-    log = set_logger(str(RESULTS_DIR), "pytorch_challenge.py.log")
+    log = set_logger(str(LOG_DIR), "pytorch_challenge.py.log")
 
     # Using a custom function to download the data
     download_data(data_dir=DATA_DIR, data_name=DATA_NAME, zip_name=ZIP_NAME, url=URL)
@@ -58,7 +62,7 @@ if __name__ == '__main__':
             mean=[0.5, 0.5, 0.5],
             std=[0.5, 0.5, 0.5]
         )
-    elif model_type == 'pretrained':
+    else:
         normalization = transforms.Normalize(
             mean=[0.485, 0.456, 0.406],
             std=[0.229, 0.224, 0.225]
@@ -85,12 +89,13 @@ if __name__ == '__main__':
     # Building a model
     params = {
         'nc': num_classes
+        'model_type': model_type
     }
 
     # Define the model
     if model_type == 'simplecnn':
         model = SimpleCNN(params)
-    elif model_type == 'pretrained':
+    else:
         model = Pretrained(params)
 
     # Make sure to put the model into GPU
@@ -117,5 +122,5 @@ if __name__ == '__main__':
     torch.save(model.state_dict(), str(RESULTS_DIR / model_name))
 
     # Log the results and save the figures
-    fig_loss_acc(t_loss, v_loss, "loss", RESULTS_DIR)
-    fig_loss_acc(t_acc, v_acc, "acc", RESULTS_DIR)
+    fig_loss_acc(t_loss, v_loss, "loss", FIG_DIR)
+    fig_loss_acc(t_acc, v_acc, "acc", FIG_DIR)
