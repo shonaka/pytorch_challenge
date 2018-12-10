@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torchvision.models as models
 
 class SimpleCNN(nn.Module):
     """
@@ -64,4 +65,20 @@ class SimpleCNN(nn.Module):
         x = self.dropout(x)
         x = self.fc2(x)
         return x
+
+
+def Pretrained(params):
+    # Load the pretrained model from torchvision
+    resnet18 = models.resnet18(pretrained=True)
+    # Freeze the parameters in the conv layers
+    for param in resnet18.parameters():
+        param.requires_grad = False
+    # Replace the last fully-connected layer to our needs
+    # extract the number of input features to the last fc layer
+    num_features = resnet18.fc.in_features
+    # construct a new fc layer with our number of output classes
+    resnet18.fc = nn.Linear(num_features, params['nc'])
+
+    return resnet18
+
 

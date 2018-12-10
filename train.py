@@ -8,21 +8,24 @@ import torch
 from torchvision import transforms
 from pathlib import Path
 from torchsummary import summary
+from torchvision import models
 # Custom functions and classes
 from trainer.trainer import train_and_eval
 from utils.util import download_data, check_dir_and_create
 from utils.logfun import set_logger, timer
 from utils.visualization import fig_loss_acc
 from data_loader.data_loaders import create_dataloader
-from model.model import SimpleCNN
+from model.model import SimpleCNN, Pretrained
 # Just for debugging purpose. You could delete this later.
 import pdb
 
 
 if __name__ == '__main__':
-    # Specify parameters. Later move to config.yaml
+    # ==== Later move this part to config.yaml or argparse
     batch_size = 32
     num_epochs = 100
+    model_type = 'pretrained'
+    model_name = "resnet18.pth.tar" # when saving model
 
     # Specifying some paths
     DATA_DIR = Path("data")
@@ -46,11 +49,20 @@ if __name__ == '__main__':
     torch_gpu = torch.cuda.is_available()
 
     # Directories to training and validation
-    directories = {x: DATA_DIR / DATA_DIR / x for x in ['train', 'valid']}
-    normalization = transforms.Normalize(
-        mean=[0.5, 0.5, 0.5],
-        std=[0.5, 0.5, 0.5]
-    )
+    directories = {x: DATA_DIR / DATA_NAME / x for x in ['train', 'valid']}
+    # If you were to use transfer learning on pre-trained network that was trained on
+    # ImageNet, you need to specifically use the following normalization parameters
+    # https://pytorch.org/tutorials/beginner/transfer_learning_tutorial.html
+    if model_type == 'simplecnn':
+        normalization = transforms.Normalize(
+            mean=[0.5, 0.5, 0.5],
+            std=[0.5, 0.5, 0.5]
+        )
+    elif model_type == 'pretrained':
+        normalization = transforms.Normalize(
+            mean=[0.485, 0.456, 0.406],
+            std=[0.229, 0.224, 0.225]
+        )
     d_size, d_loaders = create_dataloader(normalization, directories, batch_size=batch_size)
 
     # Get some other parameters
@@ -75,11 +87,14 @@ if __name__ == '__main__':
         'nc': num_classes
     }
 
-    # Define your model
-    model = SimpleCNN(params)
+    # Define the model
+    if model_type == 'simplecnn':
+        model = SimpleCNN(params)
+    elif model_type == 'pretrained':
+        model = Pretrained(params)
 
     # Make sure to put the model into GPU
-    model.cuda() if torch_gpu else SimpleCNN(params).cuda()
+    model.cuda() if torch_gpu else model.cpu()
 
     # Good for checking the architecture
     summary(model, input_size=(3, 224, 224), batch_size=batch_size)
@@ -99,7 +114,7 @@ if __name__ == '__main__':
     log.info("Training and testing took: {:0>2} Hours {:0>2} minutes {:05.2f} seconds".format(int(hours), int(mins), seconds))
 
     # Save the model
-    torch.save(model.state_dict(), str(RESULTS_DIR / "simpleCNN.pth.tar"))
+    torch.save(model.state_dict(), str(RESULTS_DIR / model_name))
 
     # Log the results and save the figures
     fig_loss_acc(t_loss, v_loss, "loss", RESULTS_DIR)

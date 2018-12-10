@@ -22,4 +22,5 @@ dependencies:
         - torchvision
         - tensorboardX
         - torchsummary
+        - ray
         - optuna
