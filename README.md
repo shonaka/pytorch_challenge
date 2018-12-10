@@ -36,14 +36,15 @@ source activate pytorch_challenge
   ├── data/ - default directory for storing input data
   │
   ├── model/ - models, losses, and metrics
-  │   ├── loss.py
-  │   ├── metric.py
   │   └── model.py
+  │
+  ├── trainer/ - training and validating
+  │   └── trainer.py
   │
   ├── results/ - default directory for storing results such as figures, checkpoints, saved models
   │
   └── utils/
-      ├── utils.py
+      ├── util.py
       ├── logger.py - class for train logging
       ├── visualization.py - class for tensorboardX visualization support
       └── ...
