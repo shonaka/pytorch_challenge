@@ -22,6 +22,7 @@ import pdb
 if __name__ == '__main__':
     # Specify parameters. Later move to config.yaml
     batch_size = 32
+    num_epochs = 100
 
     # Specifying some paths
     DATA_DIR = Path("data")
@@ -45,10 +46,7 @@ if __name__ == '__main__':
     torch_gpu = torch.cuda.is_available()
 
     # Directories to training and validation
-    directories = {
-        'train': DATA_DIR / DATA_NAME / "train",
-        'valid': DATA_DIR / DATA_NAME / "valid"
-    }
+    directories = {x: DATA_DIR / DATA_DIR / x for x in ['train', 'valid']}
     normalization = transforms.Normalize(
         mean=[0.5, 0.5, 0.5],
         std=[0.5, 0.5, 0.5]
@@ -78,7 +76,10 @@ if __name__ == '__main__':
     }
 
     # Define your model
-    model = SimpleCNN(params).cuda() if torch_gpu else SimpleCNN(params).cuda()
+    model = SimpleCNN(params)
+
+    # Make sure to put the model into GPU
+    model.cuda() if torch_gpu else SimpleCNN(params).cuda()
 
     # Good for checking the architecture
     summary(model, input_size=(3, 224, 224), batch_size=batch_size)
@@ -91,11 +92,14 @@ if __name__ == '__main__':
                                                   d_loaders,
                                                   torch_gpu,
                                                   log,
-                                                  num_epochs=100)
+                                                  num_epochs=num_epochs)
     end = time.time()
     log.info("Finsihed Training")
     hours, mins, seconds = timer(start, end)
     log.info("Training and testing took: {:0>2} Hours {:0>2} minutes {:05.2f} seconds".format(int(hours), int(mins), seconds))
+
+    # Save the model
+    torch.save(model.state_dict(), str(RESULTS_DIR / "simpleCNN.pth.tar"))
 
     # Log the results and save the figures
     fig_loss_acc(t_loss, v_loss, "loss", RESULTS_DIR)
