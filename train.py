@@ -5,6 +5,7 @@ from __future__ import print_function, division
 import json
 import time
 import torch
+import argparse
 from torchvision import transforms
 from pathlib import Path
 from torchsummary import summary
@@ -21,10 +22,15 @@ import pdb
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Train a pytorch model to classify different plants as udacity final assignment.")
+    parser.add_argument('-bs', '--batch_size', default=32)
+    parser.add_argument('-ne', '--num_epochs', default=25)
+    parser.add_argument('-mt', '--model_type', default="resnet18")
+    args = parser.parse_args()
     # ==== Later move this part to config.yaml or argparse
-    batch_size = 32
-    num_epochs = 25
-    model_type = 'resnet34'
+    batch_size = args.batch_size
+    num_epochs = args.num_epochs
+    model_type = args.model_type
     model_name = model_type + '.pth.tar' # when saving model
 
     # Specifying some paths
@@ -73,6 +79,7 @@ if __name__ == '__main__':
     num_classes = len(d_loaders['train'].dataset.classes)
 
     # Logging some information
+    log.info("PyTorch version: {}".format(torch.__version__))
     log.info("Batch size: {}".format(batch_size))
     log.info("Using GPU: {}".format(str(torch_gpu)))
     log.info("Number of training samples: {}".format(len(d_loaders['train'].dataset.samples)))
@@ -88,7 +95,7 @@ if __name__ == '__main__':
 
     # Building a model
     params = {
-        'nc': num_classes
+        'nc': num_classes,
         'model_type': model_type
     }
 

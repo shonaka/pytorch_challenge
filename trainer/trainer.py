@@ -4,7 +4,10 @@ from tqdm import tqdm
 
 def train_and_eval(model, datasizes, dataloaders, torch_gpu, log, num_epochs):
     # Define optimizers and loss function
-    optimizer = torch.optim.Adam(model.parameters(), amsgrad=True)
+    # If you are using PyTorch 0.4.0 you need this weird filter
+    # https://github.com/pytorch/pytorch/issues/679
+    # no longer needed in 1.0.0
+    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), amsgrad=True)
     criterion = nn.CrossEntropyLoss()
 
     # Define empty lists for keeping track of results
