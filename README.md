@@ -54,7 +54,8 @@ source activate pytorch_challenge
 - [x] Write requirements.yml for easy replication
 - [x] Write data_loader with a3 link to download the data into the folder
 - [x] Write train.py
-- [ ] Optimize the hyperparameters with optuna
+- [ ] Optimize the hyperparameters
+- [ ] Implement transfer learning using pre-trained models
 
 ## Feedbacks
 Any feedback would be greatly appreciated. Please feel free to file a github issue if you have one.
