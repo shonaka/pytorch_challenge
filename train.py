@@ -4,6 +4,7 @@ Main file for PyTorch Challenge Final Project
 from __future__ import print_function, division
 import json
 import time
+import yaml
 import torch
 import argparse
 from torchvision import transforms
@@ -21,12 +22,49 @@ from model.model import SimpleCNN, Pretrained
 import pdb
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Train a pytorch model to classify different plants as udacity final assignment.")
-    parser.add_argument('-bs', '--batch_size', default=32)
-    parser.add_argument('-ne', '--num_epochs', default=25)
-    parser.add_argument('-mt', '--model_type', default="resnet18")
+def create_parser():
+    parser = argparse.ArgumentParser()
+
+    g = parser.add_argument_group('Device Targets')
+    g.add_argument(
+        '--config-file',
+        dest='config_file',
+        type=argparse.FileType(mode='r'),
+        default='config.yaml')
+    g.add_argument('--name', default=[], action='append')
+    g.add_argument('--age', default=[], action='append')
+    g.add_argument('--delay', type=int)
+    g.add_argument('--stupid', dest='stupid', default=False, action='store_true')
+    return parser
+
+def parse_args(parser):
     args = parser.parse_args()
+    if args.config_file:
+        data = yaml.load(args.config_file)
+        delattr(args, 'config_file')
+        arg_dict = args.__dict__
+        for key, value in data.items():
+            if isinstance(value, list):
+                for v in value:
+                    arg_dict[key].append(v)
+            else:
+                arg_dict[key] = value
+    return args
+
+
+if __name__ == '__main__':
+
+    test = parse_args(create_parser())
+    pdb.set_trace()
+
+    description_txt = "Train a pytorch model to classify different plants as udacity final assignment."
+    parser = argparse.ArgumentParser(description=description_txt)
+    parser.add_argument('-c', '--config', help="Specify configuration file", default="config.yaml")
+    parser.add_argument('-bs', '--batch_size', type=int)
+    parser.add_argument('-ne', '--num_epochs', type=int)
+    parser.add_argument('-mt', '--model_type', type=str)
+    args = parser.parse_args()
+    pdb.set_trace()
     # ==== Later move this part to config.yaml or argparse
     batch_size = args.batch_size
     num_epochs = args.num_epochs

@@ -57,8 +57,8 @@ def train_and_eval(model, datasizes, dataloaders, torch_gpu, log, num_epochs):
 
         # Logging
         log.info("Epoch: {}".format(e+1))
-        log.info("  Train Loss: {:.2f}, Train Acc: {:.2f}".format(dict_loss['train'], dict_acc['train']))
-        log.info("  Valid Loss: {:.2f}, Valid Acc: {:.2f}".format(dict_loss['valid'], dict_acc['valid']))
+        log.info("  Train Loss: {:.3f}, Train Acc: {:.3f}".format(dict_loss['train'], dict_acc['train']))
+        log.info("  Valid Loss: {:.3f}, Valid Acc: {:.3f}".format(dict_loss['valid'], dict_acc['valid']))
         # for later visualization
         train_loss_list.append(dict_loss['train'])
         train_acc_list.append(dict_acc['train'])

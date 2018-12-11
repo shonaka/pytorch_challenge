@@ -13,31 +13,31 @@ class SimpleCNN(nn.Module):
         super(SimpleCNN, self).__init__()
         self.params = params
         # Defining your own block
-        self.layer1 = nn.Sequential(
+        self.block1 = nn.Sequential(
             nn.Conv2d(in_channels=3, out_channels=8, kernel_size=3, padding=1),
             nn.BatchNorm2d(8),
             nn.ReLU(),
             nn.MaxPool2d(2)
         )
-        self.layer2 = nn.Sequential(
+        self.block2 = nn.Sequential(
             nn.Conv2d(8, 16, 3, padding=1),
             nn.BatchNorm2d(16),
             nn.ReLU(),
             nn.MaxPool2d(2)
         )
-        self.layer3 = nn.Sequential(
+        self.block3 = nn.Sequential(
             nn.Conv2d(16, 32, 3, padding=1),
             nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.MaxPool2d(2)
         )
-        self.layer4 = nn.Sequential(
+        self.block4 = nn.Sequential(
             nn.Conv2d(32, 64, 3, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(),
             nn.MaxPool2d(2)
         )
-        self.layer5 = nn.Sequential(
+        self.block5 = nn.Sequential(
             nn.Conv2d(64, 128, 3, padding=1),
             nn.BatchNorm2d(128),
             nn.ReLU(),
@@ -53,11 +53,11 @@ class SimpleCNN(nn.Module):
         :param x: input batch data. dimension: [batch, rgb=3, height, width]
         :return x: output after forward passing
         """
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
-        x = self.layer5(x)
+        x = self.block1(x)
+        x = self.block2(x)
+        x = self.block3(x)
+        x = self.block4(x)
+        x = self.block5(x)
         # flatten layer
         x = x.view(x.size(0), -1)
         x = self.dropout(x)
