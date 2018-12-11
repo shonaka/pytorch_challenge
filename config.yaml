@@ -1,33 +1,35 @@
-default: &DEFAULT # Current best
-  w_std: 0.05  # Weights std initialization for gaussian try 0.01 vs 0.001
-  d_rate1: 0.5
-  d_rate2: 0.5  # Drop out rate
-  d_rate3: 0.5
-  tap_size: 128
-  batch_size: 32
-  num_hidden: 128
-  future_step: 1  # How many samples ahead you want to predict
-  num_stack_layers: 1
-  activator: linear
-  rnn_type: 'lstm'
-  lr: 1e-3
-  num_epochs: 15
-  optimizer: adam
-  loss: mean_square
-  weight_norm: True
+# default: &DEFAULT # Current best
+#   w_std: 0.05  # Weights std initialization for gaussian try 0.01 vs 0.001
+#   d_rate1: 0.5
+#   d_rate2: 0.5  # Drop out rate
+#   d_rate3: 0.5
+#   tap_size: 128
+#   batch_size: 32
+#   num_hidden: 128
+#   future_step: 1  # How many samples ahead you want to predict
+#   num_stack_layers: 1
+#   activator: linear
+#   rnn_type: 'lstm'
+#   lr: 1e-3
+#   num_epochs: 15
+#   optimizer: adam
+#   loss: mean_square
+#   weight_norm: True
 
-experiment:
-  <<: *DEFAULT
-  tap_size: 256
-  batch_size: 32
-  rnn_type: 'lstm'
-  w_std: 0.05
-  num_hidden: 128
-  d_rate1: 0.5
-  d_rate2: 0.5
-  d_rate3: 0.5
-  num_stack_layers: 1
-  num_epochs: 15
-  lr: 1e-3
+# experiment:
+#   <<: *DEFAULT
+#   tap_size: 256
+#   batch_size: 32
+#   rnn_type: 'lstm'
+#   w_std: 0.05
+#   num_hidden: 128
+#   d_rate1: 0.5
+#   d_rate2: 0.5
+#   d_rate3: 0.5
+#   num_stack_layers: 1
+#   num_epochs: 15
+#   lr: 1e-3
 
-age: 3
+batch_size: 32
+num_epochs: 25
+model_type: 'resnet18'

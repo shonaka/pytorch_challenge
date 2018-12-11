@@ -21,7 +21,7 @@ from model.model import SimpleCNN, Pretrained
 # Just for debugging purpose. You could delete this later.
 import pdb
 
-
+# https://codereview.stackexchange.com/questions/79008/parse-a-config-file-and-add-to-command-line-arguments-using-argparse-in-python
 def create_parser():
     parser = argparse.ArgumentParser()
 
@@ -31,10 +31,9 @@ def create_parser():
         dest='config_file',
         type=argparse.FileType(mode='r'),
         default='config.yaml')
-    g.add_argument('--name', default=[], action='append')
-    g.add_argument('--age', default=[], action='append')
-    g.add_argument('--delay', type=int)
-    g.add_argument('--stupid', dest='stupid', default=False, action='store_true')
+    parser.add_argument('-bs', '--batch_size', type=int)
+    parser.add_argument('-ne', '--num_epochs', type=int)
+    parser.add_argument('-mt', '--model_type', type=str)
     return parser
 
 def parse_args(parser):
@@ -44,25 +43,21 @@ def parse_args(parser):
         delattr(args, 'config_file')
         arg_dict = args.__dict__
         for key, value in data.items():
-            if isinstance(value, list):
-                for v in value:
-                    arg_dict[key].append(v)
-            else:
-                arg_dict[key] = value
+            if key in arg_dict:
+                # check if it is not None
+                if value is not None:
+                    arg_dict[key] = value
     return args
 
 
 if __name__ == '__main__':
 
-    test = parse_args(create_parser())
+    args = parse_args(create_parser())
     pdb.set_trace()
 
     description_txt = "Train a pytorch model to classify different plants as udacity final assignment."
     parser = argparse.ArgumentParser(description=description_txt)
     parser.add_argument('-c', '--config', help="Specify configuration file", default="config.yaml")
-    parser.add_argument('-bs', '--batch_size', type=int)
-    parser.add_argument('-ne', '--num_epochs', type=int)
-    parser.add_argument('-mt', '--model_type', type=str)
     args = parser.parse_args()
     pdb.set_trace()
     # ==== Later move this part to config.yaml or argparse
