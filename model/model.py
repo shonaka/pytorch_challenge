@@ -6,11 +6,12 @@ class SimpleCNN(nn.Module):
     """
     A class for simple CNN classifier.
     """
-    def __init__(self, params):
+    def __init__(self, args, params):
         """
         Define a constructor and initialize the network.
         """
         super(SimpleCNN, self).__init__()
+        self.args = args
         self.params = params
         # Defining your own block
         self.block1 = nn.Sequential(
@@ -67,17 +68,17 @@ class SimpleCNN(nn.Module):
         return x
 
 
-def Pretrained(params):
+def Pretrained(args, params):
     # Load the pretrained model from torchvision
-    if params['model_type'] == 'resnet18':
+    if args.model_type == 'resnet18':
         model = models.resnet18(pretrained=True)
-    elif params['model_type'] == 'resnet34':
+    elif args.model_type == 'resnet34':
         model = models.resnet34(pretrained=True)
-    elif params['model_type'] == 'resnet50':
+    elif args.model_type == 'resnet50':
         model = models.resnet50(pretrained=True)
-    elif params['model_type'] == 'resnet101':
+    elif args.model_type == 'resnet101':
         model = models.resnet101(pretrained=True)
-    elif params['model_type'] == 'resnet152':
+    elif args.model_type == 'resnet152':
         model = models.resnet152(pretrained=True)
     else:
         raise "There is no model you specified."

@@ -6,11 +6,9 @@ This is a repository for PyTorch Challenge Final Project from Udacity.
 Although the above link has a nice jupyter notebook where you could just fill in the gaps, I decided to implement the code from scratch to solve the problem for my practice.
 
 ## Data
-You could easily download the data from below and unzip to put into the "data" folder.
+You don't need to manually download the data because the code to handle that is already written.
+If you are just interested in the data, you could download it below.
 - https://s3.amazonaws.com/content.udacity-data.com/courses/nd188/flower_data.zip
-
-or alternatively, just run the following command
-
 
 ## Requirements
 Make sure you have Anaconda installed (or miniconda) and once you clone or download this repository, do the following.
@@ -19,6 +17,24 @@ Make sure you have Anaconda installed (or miniconda) and once you clone or downl
 conda env create -f requirements.yml
 source activate pytorch_challenge
 ```
+
+## Usage
+For a quick experiment or testing, just do the following.
+```
+make -f MakeFile
+```
+
+Running experiments on your custom defined CNN
+```
+make -f MakeFile cnn
+```
+
+Running experiment on trasfer learned resnets
+```
+make -f MakeFile resnet
+```
+
+You could also modify the MakeFile itself
 
 ## Folder Structure
   ```
@@ -53,7 +69,10 @@ source activate pytorch_challenge
 ## TODOs
 - [x] Write requirements.yml for easy replication
 - [x] Write data_loader with a3 link to download the data into the folder
-- [x] Write train.py
+- [x] Write main.py
+- [x] Implement argparse with YAML
+- [x] Write MakeFile for easier management and running things in batch
+- [x] Write results and save them in YAML and JSON
 - [ ] Optimize the hyperparameters (try optuna and ray)
 - [x] Implement transfer learning using pre-trained models
 - [ ] Create a notebook for validation of the results.

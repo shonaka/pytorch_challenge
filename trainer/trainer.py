@@ -2,12 +2,23 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 
-def train_and_eval(model, datasizes, dataloaders, torch_gpu, log, num_epochs):
+def train_and_eval(model, datasizes, dataloaders, torch_gpu, log, args):
     # Define optimizers and loss function
     # If you are using PyTorch 0.4.0 you need this weird filter
     # https://github.com/pytorch/pytorch/issues/679
     # no longer needed in 1.0.0
-    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), amsgrad=True)
+    if args.optim_type == 'Adam':
+        optimizer = torch.optim.Adam(model.parameters(),
+                                    lr=args.optim_lr,
+                                    amsgrad=args.optim_amsgrad)
+    elif args.optim_type == 'Momentum':
+        optimizer = optim.SGD(model.parameters(),
+                            lr=args.optim_lr,
+                            momentum=args.optim_momentum,
+                            weight_decay=args.optim_weight_decay)
+    else:
+        raise("The optimizer type not defined. Double check the configuration file.")
+    # Define loss criterion
     criterion = nn.CrossEntropyLoss()
 
     # Define empty lists for keeping track of results
@@ -17,7 +28,7 @@ def train_and_eval(model, datasizes, dataloaders, torch_gpu, log, num_epochs):
     valid_acc_list = []
 
     # Iterate over number of epochs
-    for e in range(num_epochs):
+    for e in range(args.num_epochs):
         dict_loss = {}
         dict_acc = {}
         for phase in ['train', 'valid']:
@@ -49,11 +60,11 @@ def train_and_eval(model, datasizes, dataloaders, torch_gpu, log, num_epochs):
                         optimizer.step()
                 # Track the acc and loss for visualization
                 running_loss += loss.item() * data.size(0)
-                running_corrects += torch.sum(preds == target.data)
+                running_corrects += torch.sum(preds == target.data).item()
 
             # calculate the loss and acc per epoch
             dict_loss[phase] = running_loss / datasizes[phase]
-            dict_acc[phase] = running_corrects.double() / datasizes[phase]
+            dict_acc[phase] = running_corrects / datasizes[phase]
 
         # Logging
         log.info("Epoch: {}".format(e+1))

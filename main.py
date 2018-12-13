@@ -3,16 +3,16 @@ Main file for PyTorch Challenge Final Project
 """
 from __future__ import print_function, division
 import json
-import time
 import yaml
+import time
 import torch
-import argparse
 from torchvision import transforms
 from pathlib import Path
 from torchsummary import summary
 from torchvision import models
 # Custom functions and classes
 from trainer.trainer import train_and_eval
+from utils.arg_yaml import get_args, get_parser
 from utils.util import download_data, check_dir_and_create
 from utils.logfun import set_logger, timer
 from utils.visualization import fig_loss_acc
@@ -21,54 +21,18 @@ from model.model import SimpleCNN, Pretrained
 # Just for debugging purpose. You could delete this later.
 import pdb
 
-# https://codereview.stackexchange.com/questions/79008/parse-a-config-file-and-add-to-command-line-arguments-using-argparse-in-python
-def create_parser():
-    parser = argparse.ArgumentParser()
-
-    g = parser.add_argument_group('Device Targets')
-    g.add_argument(
-        '--config-file',
-        dest='config_file',
-        type=argparse.FileType(mode='r'),
-        default='config.yaml')
-    parser.add_argument('-bs', '--batch_size', type=int)
-    parser.add_argument('-ne', '--num_epochs', type=int)
-    parser.add_argument('-mt', '--model_type', type=str)
-    return parser
-
-def parse_args(parser):
-    args = parser.parse_args()
-    if args.config_file:
-        data = yaml.load(args.config_file)
-        delattr(args, 'config_file')
-        arg_dict = args.__dict__
-        for key, value in data.items():
-            if key in arg_dict:
-                # check if it is not None
-                if value is not None:
-                    arg_dict[key] = value
-    return args
-
 
 if __name__ == '__main__':
+    # Get the default and specified arguments
+    args = get_args(get_parser("config.yaml"))
 
-    args = parse_args(create_parser())
-    pdb.set_trace()
-
-    description_txt = "Train a pytorch model to classify different plants as udacity final assignment."
-    parser = argparse.ArgumentParser(description=description_txt)
-    parser.add_argument('-c', '--config', help="Specify configuration file", default="config.yaml")
-    args = parser.parse_args()
-    pdb.set_trace()
-    # ==== Later move this part to config.yaml or argparse
-    batch_size = args.batch_size
-    num_epochs = args.num_epochs
-    model_type = args.model_type
-    model_name = model_type + '.pth.tar' # when saving model
+    # Defining a name for the model to be saved
+    header = args.trial + '_' + args.model_type
+    model_name = header + '.pth.tar'
 
     # Specifying some paths
     DATA_DIR = Path("data")
-    RESULTS_DIR = Path("results") / model_type
+    RESULTS_DIR = Path("results") / header
     LOG_DIR = RESULTS_DIR / "logs"
     FIG_DIR = RESULTS_DIR / "figures"
     # Just checking if the directory exists, if not creating
@@ -96,7 +60,7 @@ if __name__ == '__main__':
     # If you were to use transfer learning on pre-trained network that was trained on
     # ImageNet, you need to specifically use the following normalization parameters
     # https://pytorch.org/tutorials/beginner/transfer_learning_tutorial.html
-    if model_type == 'simplecnn':
+    if args.model_type == 'simplecnn':
         normalization = transforms.Normalize(
             mean=[0.5, 0.5, 0.5],
             std=[0.5, 0.5, 0.5]
@@ -106,14 +70,14 @@ if __name__ == '__main__':
             mean=[0.485, 0.456, 0.406],
             std=[0.229, 0.224, 0.225]
         )
-    d_size, d_loaders = create_dataloader(normalization, directories, batch_size=batch_size)
+    d_size, d_loaders = create_dataloader(normalization, directories, batch_size=args.batch_size)
 
     # Get some other parameters
     num_classes = len(d_loaders['train'].dataset.classes)
 
     # Logging some information
     log.info("PyTorch version: {}".format(torch.__version__))
-    log.info("Batch size: {}".format(batch_size))
+    log.info("Batch size: {}".format(args.batch_size))
     log.info("Using GPU: {}".format(str(torch_gpu)))
     log.info("Number of training samples: {}".format(len(d_loaders['train'].dataset.samples)))
     log.info("Number of classes: {}".format(num_classes))
@@ -124,25 +88,22 @@ if __name__ == '__main__':
     with open('cat_to_name.json', 'r') as f:
         cat_to_name = json.load(f)
 
-    log.info("Categories: {}".format(str(cat_to_name)))
-
     # Building a model
     params = {
         'nc': num_classes,
-        'model_type': model_type
     }
 
     # Define the model
-    if model_type == 'simplecnn':
-        model = SimpleCNN(params)
+    if args.model_type == 'simplecnn':
+        model = SimpleCNN(args, params)
     else:
-        model = Pretrained(params)
+        model = Pretrained(args, params)
 
     # Make sure to put the model into GPU
     model.cuda() if torch_gpu else model.cpu()
 
     # Good for checking the architecture
-    summary(model, input_size=(3, 224, 224), batch_size=batch_size)
+    summary(model, input_size=(3, 224, 224), batch_size=args.batch_size)
 
     # A function to perform training and validation
     log.info("Start Training")
@@ -152,7 +113,7 @@ if __name__ == '__main__':
                                                   d_loaders,
                                                   torch_gpu,
                                                   log,
-                                                  num_epochs=num_epochs)
+                                                  args)
     end = time.time()
     log.info("Finsihed Training")
     hours, mins, seconds = timer(start, end)
@@ -164,3 +125,16 @@ if __name__ == '__main__':
     # Log the results and save the figures
     fig_loss_acc(t_loss, v_loss, "loss", FIG_DIR)
     fig_loss_acc(t_acc, v_acc, "acc", FIG_DIR)
+
+    # Log the parameters and results
+    dict_params = vars(args)
+    dict_params['final_train_loss'] = round(t_loss[-1], 4)
+    dict_params['final_train_acc'] = round(t_acc[-1], 4)
+    dict_params['final_valid_loss'] = round(v_loss[-1], 4)
+    dict_params['final_valid_acc'] = round(v_acc[-1], 4)
+    print(type(dict_params))
+    print(dict_params)
+    with open(str(RESULTS_DIR / "results.yaml"), 'w') as output_file:
+        yaml.dump(dict_params, output_file, default_flow_style=False)
+    with open(str(RESULTS_DIR / "results.json"), 'w') as output_file:
+        json.dump(dict_params, output_file)
