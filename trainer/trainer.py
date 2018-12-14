@@ -2,7 +2,13 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 
-def train_and_eval(model, datasizes, dataloaders, torch_gpu, log, args):
+def get_optimizer(model, args):
+    """
+    A function to get optimizer with specified parameters.
+    :param model: A model you defined as PyTorch class.
+    :param args: configuration and parameters
+    :return optimizer: optimizer with specified parameters.
+    """
     # Define optimizers and loss function
     # If you are using PyTorch 0.4.0 you need this weird filter
     # https://github.com/pytorch/pytorch/issues/679
@@ -18,6 +24,21 @@ def train_and_eval(model, datasizes, dataloaders, torch_gpu, log, args):
                             weight_decay=args.optim_weight_decay)
     else:
         raise("The optimizer type not defined. Double check the configuration file.")
+
+    return optimizer
+
+def train_and_eval(model, datasizes, dataloaders, torch_gpu, log, args):
+    """
+    A function that wraps training and validation.
+    :param model: Your defined model as a class
+    :param datasizes: number of samples inside your dataset
+    :param dataloaders: Your defined dataloader as a DataLoader class
+    :param torch_gpu: whether to use GPU or not (True or False)
+    :param log: wrapper for logging
+    :param args: configurations and parameters
+    """
+    # Define optimizer
+    optimizer = get_optimizer(model, args)
     # Define loss criterion
     criterion = nn.CrossEntropyLoss()
 

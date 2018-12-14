@@ -77,6 +77,7 @@ if __name__ == '__main__':
 
     # Logging some information
     log.info("PyTorch version: {}".format(torch.__version__))
+    log.info("Model using: {}".format(args.model_type))
     log.info("Batch size: {}".format(args.batch_size))
     log.info("Using GPU: {}".format(str(torch_gpu)))
     log.info("Number of training samples: {}".format(len(d_loaders['train'].dataset.samples)))
