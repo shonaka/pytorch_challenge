@@ -69,6 +69,9 @@ class SimpleCNN(nn.Module):
 
 
 def Pretrained(args, params):
+    """
+    Using Transfer Learning on pre-trained model.
+    """
     # Load the pretrained model from torchvision
     if args.model_type == 'resnet18':
         model = models.resnet18(pretrained=True)

@@ -2,6 +2,9 @@ from torchvision import transforms, datasets
 from torch.utils.data import DataLoader
 
 def create_dataloader(normalization, directories, batch_size):
+    """
+    A function to create dataloader based on specified parameters and path
+    """
     options = ['train', 'valid']
     # Defining transformations
     data_transforms = {
