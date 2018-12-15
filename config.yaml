@@ -2,6 +2,11 @@ trial: "exp1" # going to be a header controlling where to save
 batch_size: 32
 num_epochs: 25
 
+# optuna: hyperparameter optimization related
+optuna:
+  tune: True # Whether to perform hyperparameter optimization
+  trials: 50 # How many trials to run
+
 # model related
 model:
   type: 'resnet18'

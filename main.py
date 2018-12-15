@@ -6,12 +6,13 @@ import json
 import yaml
 import time
 import torch
+import optuna
 from torchvision import transforms
 from pathlib import Path
 from torchsummary import summary
 from torchvision import models
 # Custom functions and classes
-from trainer.trainer import train_and_eval
+from trainer.trainer import train_and_eval, objective
 from utils.arg_yaml import get_args, get_parser
 from utils.util import download_data, check_dir_and_create
 from utils.logfun import set_logger, timer
@@ -42,6 +43,7 @@ if __name__ == '__main__':
     check_dir_and_create(str(FIG_DIR))
 
     # Data URL
+    # TODO: Later move these to MakeFile
     URL = "https://s3.amazonaws.com/content.udacity-data.com/courses/nd188/flower_data.zip"
     DATA_NAME = "flower_data"
     ZIP_NAME = "flower_data.zip"
@@ -78,6 +80,7 @@ if __name__ == '__main__':
     # Logging some information
     log.info("PyTorch version: {}".format(torch.__version__))
     log.info("Model using: {}".format(args.model_type))
+    log.info("Hyperparameter optimization: {}".format(args.optuna_tune))
     log.info("Batch size: {}".format(args.batch_size))
     log.info("Using GPU: {}".format(str(torch_gpu)))
     log.info("Number of training samples: {}".format(len(d_loaders['train'].dataset.samples)))
@@ -99,7 +102,6 @@ if __name__ == '__main__':
         model = SimpleCNN(args, params)
     else:
         model = Pretrained(args, params)
-
     # Make sure to put the model into GPU
     model.cuda() if torch_gpu else model.cpu()
 
@@ -109,7 +111,13 @@ if __name__ == '__main__':
     # A function to perform training and validation
     log.info("Start Training")
     start = time.time()
-    t_loss, t_acc, v_loss, v_acc = train_and_eval(model,
+    if args.optuna_tune:
+        study = optuna.create_study(pruner=optuna.pruners.MedianPruner(n_warmup_steps=10))
+        study.optimize(lambda trial: objective(trial, params, d_size, d_loaders, torch_gpu, args),
+                       n_trials=args.optuna_trials)
+        pdb.set_trace()
+    else:
+        t_loss, t_acc, v_loss, v_acc = train_and_eval(model,
                                                   d_size,
                                                   d_loaders,
                                                   torch_gpu,
