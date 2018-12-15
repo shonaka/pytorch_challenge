@@ -151,6 +151,8 @@ def objective(trial, params, datasizes, dataloaders, torch_gpu, args):
         model = Pretrained(args, params)
     # Make sure to put the model into GPU
     model.cuda() if torch_gpu else model.cpu()
+    # Using multiple GPUs
+    model = torch.nn.DataParallel(model)
 
     # Define optimizer
     optimizer = optuna_optimizer(trial, model, args)

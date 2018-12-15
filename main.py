@@ -104,6 +104,8 @@ if __name__ == '__main__':
         model = Pretrained(args, params)
     # Make sure to put the model into GPU
     model.cuda() if torch_gpu else model.cpu()
+    # Using multiple GPUs
+    model = torch.nn.DataParallel(model)
 
     # Good for checking the architecture
     summary(model, input_size=(3, 224, 224), batch_size=args.batch_size)
