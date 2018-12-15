@@ -41,6 +41,15 @@ make -f MakeFile resnet
 You could also modify the MakeFile itself.
 Note that hyperparameter optimization using optuna or any other bayesian methods could take some time (up to a few days if you want to optimize many hyperparameters).
 
+If you want to run the file through python interpreter, you could also do the following
+```
+python main.py --num_epochs 30 --batch_size 64
+```
+or if you want to run hyperparameter optimization, do the following
+```
+python main.py --optuna_tune True
+```
+
 ## Folder Structure
   ```
   pytorch-template/

@@ -42,23 +42,17 @@ if __name__ == '__main__':
     check_dir_and_create(str(LOG_DIR))
     check_dir_and_create(str(FIG_DIR))
 
-    # Data URL
-    # TODO: Later move these to MakeFile
-    URL = "https://s3.amazonaws.com/content.udacity-data.com/courses/nd188/flower_data.zip"
-    DATA_NAME = "flower_data"
-    ZIP_NAME = "flower_data.zip"
-
     # Custom function for logging
-    log = set_logger(str(LOG_DIR), "pytorch_challenge.py.log")
+    log = set_logger(str(LOG_DIR), args.log_name)
 
     # Using a custom function to download the data
-    download_data(data_dir=DATA_DIR, data_name=DATA_NAME, zip_name=ZIP_NAME, url=URL)
+    download_data(data_dir=DATA_DIR, data_name=args.file_name, zip_name=args.zip_name, url=args.url)
 
     # Use GPU if available
     torch_gpu = torch.cuda.is_available()
 
     # Directories to training and validation
-    directories = {x: DATA_DIR / DATA_NAME / x for x in ['train', 'valid']}
+    directories = {x: DATA_DIR / args.file_name / x for x in ['train', 'valid']}
     # If you were to use transfer learning on pre-trained network that was trained on
     # ImageNet, you need to specifically use the following normalization parameters
     # https://pytorch.org/tutorials/beginner/transfer_learning_tutorial.html
@@ -114,10 +108,32 @@ if __name__ == '__main__':
     log.info("Start Training")
     start = time.time()
     if args.optuna_tune:
+        # Running hyperparameter optimization using optuna
+        # n_warmup_steps = 10 to at least run 10 epochs before deciding to prune
         study = optuna.create_study(pruner=optuna.pruners.MedianPruner(n_warmup_steps=10))
+        # use lambda if you want to pass more agruments other than the "trial"
         study.optimize(lambda trial: objective(trial, params, d_size, d_loaders, torch_gpu, args),
                        n_trials=args.optuna_trials)
-        pdb.set_trace()
+        # after the optimization, this is how you get the best parameters
+        best_params = study.best_params
+        # The best error_rate
+        best_error = study.best_value
+        log.info("Best params are: {}".format(str(best_params)))
+        log.info("Best error_rate is: {:.4f}".format(best_error))
+        # now running with the best parameters for saving results purposes
+        # TODO: optimize this part a little, I shouldn't have to run twice
+        # TODO: make parsing of the best parameters automatic as well
+        args.optim_lr = float(best_params['lr'])
+        args.optim_type = str(best_params['optimizer'])
+        args.optim_amsgrad = bool(best_params['amsgrad'])
+        args.optim_weight_decay = float(best_params['weight_decay'])
+        log.info("Final testing with the best parameters")
+        t_loss, t_acc, v_loss, v_acc = train_and_eval(model,
+                                                  d_size,
+                                                  d_loaders,
+                                                  torch_gpu,
+                                                  log,
+                                                  args)
     else:
         t_loss, t_acc, v_loss, v_acc = train_and_eval(model,
                                                   d_size,

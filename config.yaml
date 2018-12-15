@@ -1,10 +1,16 @@
+url: "https://s3.amazonaws.com/content.udacity-data.com/courses/nd188/flower_data.zip"
+file_name: "flower_data"
+zip_name: "flower_data.zip"
+log_name: "pytorch_challenge.py.log"
+
 trial: "exp1" # going to be a header controlling where to save
 batch_size: 32
 num_epochs: 25
 
 # optuna: hyperparameter optimization related
 optuna:
-  tune: True # Whether to perform hyperparameter optimization
+  # Default False as this takes a lot of time
+  tune: False # Whether to perform hyperparameter optimization
   trials: 50 # How many trials to run
 
 # model related

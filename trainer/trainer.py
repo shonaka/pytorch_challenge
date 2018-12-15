@@ -21,7 +21,7 @@ def get_optimizer(model, args):
                                     lr=args.optim_lr,
                                     amsgrad=args.optim_amsgrad)
     elif args.optim_type == 'Momentum':
-        optimizer = optim.SGD(model.parameters(),
+        optimizer = torch.optim.SGD(model.parameters(),
                             lr=args.optim_lr,
                             momentum=args.optim_momentum,
                             weight_decay=args.optim_weight_decay)
@@ -53,7 +53,7 @@ def train_and_eval(model, datasizes, dataloaders, torch_gpu, log, args):
     valid_acc_list = []
 
     # Iterate over number of epochs
-    for e in range(args.num_epochs):
+    for e in tqdm(range(args.num_epochs)):
         dict_loss = {}
         dict_acc = {}
         for phase in ['train', 'valid']:
@@ -160,7 +160,7 @@ def objective(trial, params, datasizes, dataloaders, torch_gpu, args):
     criterion = nn.CrossEntropyLoss()
 
     # Iterate over number of epochs
-    for e in range(args.num_epochs):
+    for e in tqdm(range(args.num_epochs)):
         for phase in ['train', 'valid']:
             if phase == 'train':
                 model.train()
