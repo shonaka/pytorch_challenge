@@ -18,6 +18,10 @@ conda env create -f requirements.yml
 source activate pytorch_challenge
 ```
 
+Current PC environment:
+- RAM: 64GB
+- GPUs: 1080 Ti, 1070
+
 ## Usage
 For a quick experiment or testing, just do the following.
 ```
@@ -34,7 +38,8 @@ Running experiment on trasfer learned resnets
 make -f MakeFile resnet
 ```
 
-You could also modify the MakeFile itself
+You could also modify the MakeFile itself.
+Note that hyperparameter optimization using optuna or any other bayesian methods could take some time (up to a few days if you want to optimize many hyperparameters).
 
 ## Folder Structure
   ```
@@ -73,7 +78,7 @@ You could also modify the MakeFile itself
 - [x] Implement argparse with YAML
 - [x] Write MakeFile for easier management and running things in batch
 - [x] Write results and save them in YAML and JSON
-- [ ] Optimize the hyperparameters (try optuna and ray)
+- [x] Optimize the hyperparameters (try optuna and ray)
 - [x] Implement transfer learning using pre-trained models
 - [ ] Create a notebook for validation of the results.
     - [ ] Load the pre-trained network of yours
